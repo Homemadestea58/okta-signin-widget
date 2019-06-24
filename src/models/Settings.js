@@ -156,11 +156,11 @@ function (Okta, Q, Errors, BrowserFeatures, Util, Logger, config) {
       //Consent
       'consent.cancel': 'function',
 
-      //IDP Discovery
-      'idpDiscovery.requestContext': 'string',
-
       //Colors
-      'colors.brand': 'string'
+      'colors.brand': 'string',
+
+      //Descriptions
+      'brandName': 'string'
     },
 
     derived: {

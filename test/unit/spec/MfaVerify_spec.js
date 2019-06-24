@@ -322,6 +322,8 @@ function (Okta,
     var setupOktaPush = _.partial(setup, resVerifyPushOnly, { factorType: 'push' });
     var setupWindowsHello = _.partial(
       setup, resAllFactors, { factorType: 'webauthn', provider: 'FIDO' }, { 'features.webauthn': false });
+    var setupWindowsHelloWithBrandName = _.partial(
+      setup, resAllFactors, { factorType: 'webauthn', provider: 'FIDO' }, { 'features.webauthn': false, brandName: 'Spaghetti Inc.' });
     var setupPassword = _.partial(setup, resPassword, { factorType: 'password' });
     var setupPasswordWithIdx = _.partial(setup, resFactorRequiredPassword, { factorType: 'password' });
     var setupCustomSAMLFactor = _.partial(setup, resAllFactors,
@@ -615,11 +617,6 @@ function (Okta,
       var password = test.form.passwordField();
       expect(password.length).toBe(1);
       expect(password.attr('type')).toEqual(fieldType);
-    }
-
-    function expectHasRightPlaceholderText (test, placeholderText){
-      var answer = test.form.answerField();
-      expect(answer.attr('placeholder')).toEqual(placeholderText);
     }
 
     function expectError (test, code, message, controller, resError) {
@@ -2208,9 +2205,10 @@ function (Okta,
             expectHasAnswerField(test, 'password');
           });
         });
-        itp('has right placeholder text in answer field', function () {
+        itp('has right label for answer field', function () {
           return setupYubikey().then(function (test) {
-            expectHasRightPlaceholderText(test, 'Click here, then tap your YubiKey');
+            var $answerLabel = test.form.answerLabel();
+            expect($answerLabel.text().trim()).toEqual('Click here, then tap your YubiKey');
           });
         });
         itp('does not autocomplete', function () {
@@ -3608,7 +3606,35 @@ function (Okta,
               }, test);
             })
             .then(function (test) {
-              expect(test.form.subtitleText()).toBe('Signing in to Okta...');
+              expect(test.form.subtitleText()).toBe('Signing in...');
+              expect(test.form.$('.o-form-button-bar').hasClass('hide')).toBe(true);
+            });  
+        });
+
+        itp('subtitle changes after submitting the form to correct subtitle if config has a brandName', function () {
+          return emulateWindows()
+            .then(setupWindowsHelloWithBrandName)
+            .then(function (test) {
+              test.setNextResponse([resChallengeWindowsHello, resSuccess]);
+              expect(test.form.subtitleText()).toBe('Verify your identity with Windows Hello');
+              expect(test.form.$('.o-form-button-bar').hasClass('hide')).toBe(false);
+
+              test.form.submit();
+              expect(test.form.subtitleText()).toBe('Please wait while Windows Hello is loading...');
+              expect(test.form.$('.o-form-button-bar').hasClass('hide')).toBe(true);
+
+              spyOn(test.router.controller.model, 'trigger').and.callThrough();
+              return Expect.waitForSpyCall(webauthn.getAssertion, test);
+            })
+            .then(function (test) {
+              return Expect.wait(() => {
+                const allArgs = test.router.controller.model.trigger.calls.allArgs();
+                const flattedArgs = Array.prototype.concat.apply([], allArgs);
+                return  flattedArgs.includes('sync') && flattedArgs.includes('signIn');
+              }, test);
+            })
+            .then(function (test) {
+              expect(test.form.subtitleText()).toBe('Signing in to Spaghetti Inc....');
               expect(test.form.$('.o-form-button-bar').hasClass('hide')).toBe(true);
             });
         });

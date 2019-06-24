@@ -18,7 +18,6 @@ define([
 ],
 function (Okta, PrimaryAuthModel, CookieUtil, Enums) {
 
-  var { Util: CourageUtil } = Okta.internal.util;
   var _ = Okta._;
 
   return PrimaryAuthModel.extend({
@@ -41,8 +40,7 @@ function (Okta, PrimaryAuthModel, CookieUtil, Enums) {
       var username = this.settings.transformUsername(this.get('username'), Enums.IDP_DISCOVERY),
           remember = this.get('remember'),
           lastUsername = this.get('lastUsername'),
-          resource = 'okta:acct:' + username,
-          requestContext = this.get('requestContext');
+          resource = 'okta:acct:' + username;
 
       this.setUsernameCookie(username, remember, lastUsername);
 
@@ -53,34 +51,19 @@ function (Okta, PrimaryAuthModel, CookieUtil, Enums) {
       this.appState.trigger('loading', true);
 
       var webfingerArgs = {
-        resource: resource,
-        requestContext: requestContext
+        resource: resource
       };
 
       var authClient = this.appState.settings.authClient;
 
       authClient.webfinger(webfingerArgs)
         .then(_.bind(function (res) {
-          if(res) {
-            if(res.links && res.links[0] && res.links[0].properties['okta:idp:type'] === 'OKTA') {
+          if(res && res.links && res.links[0]) {
+            if(res.links[0].properties['okta:idp:type'] === 'OKTA') {
               this.trigger('goToPrimaryAuth');
-            }
-            else {
+            } else if (res.links[0].href) {
               var redirectFn = this.settings.get('redirectUtilFn');
-
-              var successData = {
-                idpDiscovery: {
-                  redirectToIdp: function (redirectUrl) {
-                    if(res.links && res.links[0] && res.links[0].href) {
-                      var queryParams = {fromURI: redirectUrl};
-                      queryParams['login_hint'] = username;
-                      var url = res.links[0].href + CourageUtil.getUrlQueryString(queryParams);
-                      redirectFn(url);
-                    }
-                  }
-                }
-              };
-              this.settings.callGlobalSuccess(Enums.IDP_DISCOVERY, successData);
+              redirectFn(res.links[0].href);
             }
           }
         }, this))
