@@ -39,13 +39,15 @@ function (Okta, Q, factorUtil, Util, Errors, BaseLoginModel) {
           'email',
           'token',
           'token:software:totp',
+          'token:hotp',
           'token:hardware',
           'question',
           'push',
           'u2f',
           'password',
           'assertion:saml2',
-          'assertion:oidc'
+          'assertion:oidc',
+          'webauthn'
         ]
       },
       provider: {
@@ -58,6 +60,7 @@ function (Okta, Q, factorUtil, Util, Errors, BaseLoginModel) {
           'GOOGLE',
           'YUBICO',
           'FIDO',
+          'CUSTOM',
           'GENERIC_SAML',
           'GENERIC_OIDC'
         ]
@@ -104,7 +107,7 @@ function (Okta, Q, factorUtil, Util, Errors, BaseLoginModel) {
       factorLabel: {
         deps: ['provider', 'factorType', 'vendorName'],
         fn: function (provider, factorType, vendorName) {
-          if (_.contains(['DEL_OATH', 'GENERIC_SAML', 'GENERIC_OIDC'], provider)) {
+          if (_.contains(['DEL_OATH', 'GENERIC_SAML', 'GENERIC_OIDC', 'CUSTOM'], provider)) {
             return vendorName;
           }
           return factorUtil.getFactorLabel.apply(this, [provider, factorType]);
